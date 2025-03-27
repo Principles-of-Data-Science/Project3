@@ -1,0 +1,245 @@
+---
+title: "DSC 385 - Project 3 Report"
+format: html
+---
+
+## Name and EID
+
+Please enter your name and EID here.
+
+## Setup
+
+```{r}
+#| message: false
+
+library(tidyverse)
+library(tidymodels)
+
+## Load any additional packages that you need here
+
+
+## You may want to use set.seed() to ensure that randomized results are
+## reproducible across renders of your document
+
+```
+
+Read in the data with `read_csv()` and check the data to make sure all of the expected observations and variables are there.
+
+```{r}
+#| message: false
+
+## Read in the data
+pm <- read_csv("pmFRM.csv.gz")
+img_dat <- read_csv("image_data.csv.bz2")
+```
+
+
+The following annotated code is used to visualize a single image from a specific date and color band. You can feel free to modify it to visualize other dates or color bands. You can also delete this block if you want as it does not play a role in the analysis that follows.
+
+```{r}
+img_dat |>
+    ## Select a specific date and band
+    filter(date == "2017-03-23",
+           band == "band1") |>
+    ## Select the pixel values
+    select(value) |>
+    ## Construct the grid/matrix corresponding to the pixel values
+    bind_cols(expand_grid(col = 1:24, row = 1:24)) |>
+    ## Setup the rows/columns of the image grid
+    ggplot(aes(row, col)) +
+    ## Fill the grid squares with pixel values
+    geom_raster(aes(fill = value)) +
+    ## Fix the aspect ratio to be 1:1
+    coord_fixed() +
+    ## Use Viridis color palette for pixel values
+    scale_fill_viridis_c() +
+    ## Remove background clutter
+    theme_void()
+```
+
+
+
+## Part 1: Prepare the data
+
+The data in `img_dat` are in a long form and not suitable for use in the Tidymodels framework. The first thing you will need to do is to reshape the data using `pivot_wider()` so that there is one pixel/band combination per column. The data should look something like the following:
+
+```
+# A tibble: 1,217 × 2,305
+   date       pixel001_band1 pixel001_band2 pixel001_band3 pixel001_band4
+   <date>              <dbl>          <dbl>          <dbl>          <dbl>
+ 1 2017-01-25          6185           5949           5631            4190
+ 2 2017-02-08          3449           3374           3316            2254
+ 3 2017-02-12          8630           7982           6938            4593
+ 4 2017-02-13          6507           6250           5775            4244
+ 5 2017-02-15          6706           6580           6137            4694
+ 6 2017-02-19          6029           5907           5339            4069
+ 7 2017-03-04          5643           5384           4532            3171
+ 8 2017-03-15          9220           8468           7475            5631
+ 9 2017-03-21          9074.          9062.          8644.           6881
+10 2017-03-23          8949           8702           8387            6044
+```
+
+```{r}
+
+```
+
+Next, you will need to join the data with the outcome data in the `pm` data frame. 
+
+```{r}
+
+```
+
+Now split the data into training and testing datasets. Use 3/4 of the data for training and the remaining 1/4 for testing. Store the training data in a separate R object and leave the testing data aside for now.
+
+```{r}
+
+```
+
+With the training data, visualize the ground-level monitor data by making a scatterplot of the `pmFRM` variable vs. `date`. 
+
+Describe any characteristics of the data that 
+
+1. May be useful for developing a prediction model 
+
+2. May present a challenge for developing a prediction model
+
+
+```{r}
+
+```
+
+**Write your answer to the questions here.**
+
+
+## Part 2: Linear regression model and feature extraction
+
+In order to get an initial sense of the data, first develop a linear regression model WITHOUT using any of the satellite image data. That means, the only predictor variable you will be able to use is the `date` variable. This means that you will need to derive features from the `date` variable that may be useful for predicting ground-level PM. For this part:
+
+1. Derive at least 2 features based on the `date` variable for inclusion in your model. 
+
+2. Specify your new features using the `step_*` functions in the recipe specification. In particular, `step_mutate()` is used to create new variables.
+
+3. Use `linear_reg()` for your model.
+
+4. Create a workflow that assembles your recipe and your model specification.
+
+5. Use 10-fold cross-validation to estimate the root mean squared error (RMSE) and the R-squared for your model in the training data.
+
+Try to develop a model that has an **RMSE less than 4 or an R-squared greater than 0.05**. You may need to play with the feature extraction a little while developing your model.
+
+NOTE: You may want to review 
+[Lecture 6.2](https://utexas.instructure.com/courses/1415780/modules/items/14351138) and
+[Lecture 6.3](https://utexas.instructure.com/courses/1415780/modules/items/14351139), which cover the use of the `lubridate` package to manipulate dates and times.
+
+```{r}
+
+```
+
+
+**Write your RMSE and R-squared here.**
+
+
+## Part 3: Diagnose the model
+
+In this part we will diagnose the linear regression model from the previous section and identify possible ways that the model could be improved. Using the model you specified in the previous section, fit the model to the entire training dataset using the `fit()` function and store the result in an R object.
+
+```{r}
+
+```
+
+Make a plot of the `pmFRM` vs. `date` variables and overlay the model predictions on the plot using `geom_line()`.
+
+```{r}
+
+```
+
+Make a plot of the residuals vs. date and overlay a smoother with `geom_smooth()` to detect any patterns in the residuals.
+
+```{r}
+
+```
+
+Make a plot of the residuals vs. the predicted values.
+
+```{r}
+
+```
+
+Make any other diagnostic plots or results that you think might be helpful to improve the performance of the model.
+
+```{r}
+## Include additional diagnostic code here
+
+```
+
+
+Using the diagnostic plots and code you have produced above, describe at least two deficiencies of your linear model.
+
+**Write your answer here.**
+
+
+
+## Part 4: Incorporate the image data
+
+We will now incorporate the image pixel data and use a wider range of fitting algorithms to build a prediction model.
+
+1. Choose a machine learning model for this part of the analysis. Ones we have seen already are `nearest_neighbor()`, `rand_forest()`, and `decision_tree()`. But feel free to use a different one if you wish. You can find a [list of possible models](https://www.tidymodels.org/find/parsnip/) on the Tidymodels web site. If you use a different model, you may need to install additional packages.
+
+2. Identify the tuning parameters for your chosen model.
+
+3. Specify a recipe using all the variables in the dataset
+
+4. Create a workflow that assembles your recipe and your model specification.
+
+5. Use 10-fold cross-validation to estimate the root mean squared error (RMSE) and the R-squared for your model in the training data.
+
+6. Tune your model using a range of possible tuning parameters to identify the best-predicting model
+
+Try to build a model that out-performs the linear regression model from the previous part.
+
+NOTE: Doing the cross-validation and model tuning here may take a *significant* amount of time depending on your choice of tuning parameters and the speed of your computer. You may need to be patient with the process here.
+
+
+
+```{r}
+
+```
+
+
+Which one of your models (i.e. which combination of tuning parameters) produces the best prediction performance on the training dataset?
+
+**Write your answer here.**
+
+
+
+## Part 5: Diagnose the model
+
+Fit your final model to the entire training dataset using the `fit()` function and diagnose the fit of your model using diagnostic plots or other diagnostic measures.
+
+1. How does the performance of your final model compare with the performance of the linear model?
+
+2. What shortcomings does your final model have that could be improved?
+
+
+```{r}
+
+```
+
+**Write your answer here.**
+
+
+## Part 6: Discussion
+
+Make a final assessment of your model using the testing dataset. What are the final RMSE and R-squared for your best model?
+
+```{r}
+
+```
+
+
+**Write your answer here.**
+
+
+Reflect on the process of conducting this project. What was challenging, what have you learned from the process itself? Was there anything that was unexpected that you found during this analysis? If so, what was your expectation and how did the experience deviate from your expectation?
+
+**Write your answer here.**
